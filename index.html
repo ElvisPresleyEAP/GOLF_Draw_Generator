@@ -1,0 +1,478 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golfer Group Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .golf-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease-in-out;
+        }
+        .golf-card:hover {
+            transform: translateY(-2px);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .group-card-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 sm:p-8 md:p-12">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-8">
+        <!-- Title and Edit button section -->
+        <div class="flex items-center justify-center mb-6">
+            <h1 id="mainTitle" class="text-3xl sm:text-4xl font-bold text-center text-gray-800">Golfer Group Generator</h1>
+            <button id="editTitleButton" class="ml-4 p-2 text-gray-500 hover:text-indigo-600 transition-colors duration-200">
+                <!-- SVG for a pencil icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M18.666 8.666L10.333 17H7V13.667l8.333-8.335zM16.5 3.5a1.5 1.5 0 012.121 0l1.415 1.414a1.5 1.5 0 010 2.122l-10.233 10.233H3v-4.233L16.5 3.5z" />
+                </svg>
+            </button>
+        </div>
+
+        <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">Add a new golfer, or select from the list below to create new groups.</p>
+
+        <!-- Add Player Section -->
+        <div class="flex flex-col sm:flex-row items-center justify-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
+            <input type="text" id="newGolferInput" placeholder="Enter new golfer name" class="w-full sm:w-72 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-800">
+            <button id="addGolferButton" class="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105">
+                Add Golfer
+            </button>
+        </div>
+
+        <!-- Golfer Selection Checkbox List -->
+        <div class="mb-2">
+            <label class="block text-gray-700 font-semibold mb-2 text-center">Select Golfers to Include:</label>
+            <div id="golferChecklist" class="w-full h-48 p-2 overflow-y-auto border border-gray-300 rounded-md bg-white text-gray-800">
+                <!-- Checkboxes will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Delete Button -->
+        <div class="flex justify-center mb-8">
+            <button id="deleteSelectedButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105">
+                Delete Selected Golfer(s)
+            </button>
+        </div>
+
+        <div class="flex flex-col items-center mb-10">
+            <div class="flex space-x-4">
+                <button id="drawGroupsButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                    Draw Groups
+                </button>
+                <button id="reshuffleButton" class="hidden bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                    Reshuffle Groups
+                </button>
+            </div>
+            <div id="loadingMessage" class="text-center text-indigo-600 font-bold mt-4 hidden">Drawing a random order...</div>
+        </div>
+
+        <div id="groupsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Groups will be dynamically generated here -->
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            // Master list of all golfers
+            const initialGolferList = [
+                'Colin Parker',
+                'Craig Palmer',
+                'Daljit Basra',
+                'Dan Breeze',
+                'Daren Davey',
+                'Darren Roberts',
+                'David Park',
+                'David Quinlan',
+                'Duane Hayden',
+                'Gamma Basra',
+                'James Andrews',
+                'Josh Kinnear',
+                'Harjinder Theara',
+                'Ian Hamilton',
+                'James Ellis',
+                'James Major',
+                'Jamie Dixon',
+                'Jeet Sohal',
+                'Joe Ciampa',
+                'Jonathan Conlon',
+                'Josh Eaton',
+                'Joshua Roseberry',
+                'Julian Pennie',
+                'Kamal Dhunna',
+                'Mark Hickman',
+                'Mark Saunders',
+                'Michael Paeckmeyer',
+                'Nick Eaton',
+                'Oliver Goodwin',
+                'Paul Bentley',
+                'Peter Ramsden',
+                'Rich Moore',
+                'Ryan Conlon',
+                'Stephen De Fraine',
+                'Steve Cornwell',
+                'Steven Smith',
+                'Tom McCarthy',
+                'Tony Chapman',
+                'Tony Semple',
+                'Jas Basra',
+                'Carl Best',
+                'Sean Casey',
+                'Nav Nagra'
+            ];
+            
+            // Define a key for localStorage to store the golfer list and title
+            const storageKey = 'golferList';
+            const titleStorageKey = 'appTitle';
+            
+            // Get references to DOM elements
+            const newGolferInput = document.getElementById('newGolferInput');
+            const addGolferButton = document.getElementById('addGolferButton');
+            const golferChecklist = document.getElementById('golferChecklist');
+            const deleteSelectedButton = document.getElementById('deleteSelectedButton');
+            const drawGroupsButton = document.getElementById('drawGroupsButton');
+            const reshuffleButton = document.getElementById('reshuffleButton');
+            const groupsContainer = document.getElementById('groupsContainer');
+            const mainTitle = document.getElementById('mainTitle');
+            const editTitleButton = document.getElementById('editTitleButton');
+            const loadingMessage = document.getElementById('loadingMessage');
+            
+            // --- Robust Initialization Logic ---
+            let golferNames;
+            try {
+                const storedNames = localStorage.getItem(storageKey);
+                const parsedNames = storedNames ? JSON.parse(storedNames) : null;
+                // If local storage has a valid array with at least one name, use it.
+                if (Array.isArray(parsedNames) && parsedNames.length > 0) {
+                    // Sort the stored names alphabetically for a consistent checkbox order
+                    golferNames = parsedNames.sort((a, b) => a.localeCompare(b));
+                } else {
+                    // Otherwise, use the default list and sort it.
+                    golferNames = initialGolferList.sort((a, b) => a.localeCompare(b));
+                }
+            } catch (e) {
+                console.error("Error parsing golfer list from localStorage. Using default list.", e);
+                // In case of an error, fall back to the default list.
+                golferNames = initialGolferList.sort((a, b) => a.localeCompare(b));
+            }
+            
+            // Function to save the current golfer list to localStorage
+            function saveGolfersToLocalStorage() {
+                localStorage.setItem(storageKey, JSON.stringify(golferNames));
+            }
+            
+            // Function to save the current title to localStorage
+            function saveTitleToLocalStorage(newTitle) {
+                localStorage.setItem(titleStorageKey, newTitle);
+                mainTitle.textContent = newTitle;
+                document.title = newTitle;
+            }
+            
+            // Function to shuffle an array (Fisher-Yates algorithm)
+            function shuffle(array) {
+                let currentIndex = array.length, randomIndex;
+                // While there remain elements to shuffle.
+                while (currentIndex != 0) {
+                    // Pick a remaining element.
+                    randomIndex = Math.floor(Math.random() * currentIndex);
+                    currentIndex--;
+                    // And swap it with the current element.
+                    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+                }
+                return array;
+            }
+            
+            saveGolfersToLocalStorage();
+
+            // Load the title from localStorage or use initial value
+            let currentTitle = localStorage.getItem(titleStorageKey) || "Golfer Group Generator";
+            mainTitle.textContent = currentTitle;
+
+            let lastSelectedGolfers = [];
+            
+            // Function to populate the checkbox list with all golfers
+            function populateGolferChecklist() {
+                golferChecklist.innerHTML = ''; // Clear existing checkboxes
+                golferNames.forEach(golfer => {
+                    const label = document.createElement('label');
+                    label.className = 'block flex items-center p-2 hover:bg-indigo-100 cursor-pointer rounded-md';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = golfer;
+                    checkbox.className = 'mr-2 text-indigo-600 focus:ring-indigo-500';
+
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = golfer;
+
+                    label.appendChild(checkbox);
+                    label.appendChild(textSpan);
+                    golferChecklist.appendChild(label);
+                });
+            }
+
+            // Function to render the groups with an optimized distribution of 3 and 4 players
+            function renderGroups(golfers) {
+                groupsContainer.innerHTML = ''; // Clear all previous groups to ensure a fresh redraw
+                
+                const numGolfers = golfers.length;
+                if (numGolfers === 0) {
+                    groupsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-full">No golfers selected. Please check the boxes next to the players you want to include.</p>';
+                    return;
+                }
+                if (numGolfers < 3) {
+                    groupsContainer.innerHTML = `<p class="text-center text-gray-500 col-span-full">Please select at least 3 golfers to create groups. Only ${numGolfers} selected.</p>`;
+                    return;
+                }
+                
+                let groupsOf4 = 0;
+                let groupsOf3 = 0;
+                let groupsOf2 = 0;
+                
+                let remainder = numGolfers % 4;
+
+                if (remainder === 0) {
+                    groupsOf4 = numGolfers / 4;
+                } else if (remainder === 1) {
+                    if (numGolfers === 5) {
+                        groupsOf3 = 1;
+                        groupsOf2 = 1;
+                    } else if (numGolfers >= 9) {
+                        groupsOf3 = 3;
+                        groupsOf4 = (numGolfers - 9) / 4;
+                    } else {
+                        if (numGolfers < 5) {
+                            renderSingleGroup(golfers);
+                            return;
+                        }
+                    }
+                } else if (remainder === 2) {
+                    if (numGolfers < 6) {
+                        renderSingleGroup(golfers);
+                        return;
+                    }
+                    groupsOf3 = 2;
+                    groupsOf4 = (numGolfers - 6) / 4;
+                } else if (remainder === 3) {
+                    groupsOf3 = 1;
+                    groupsOf4 = (numGolfers - 3) / 4;
+                }
+
+                let allGroups = [];
+                let currentGolferIndex = 0;
+
+                for (let i = 0; i < groupsOf3; i++) {
+                    const group = golfers.slice(currentGolferIndex, currentGolferIndex + 3);
+                    allGroups.push(group);
+                    currentGolferIndex += 3;
+                }
+
+                for (let i = 0; i < groupsOf4; i++) {
+                    const group = golfers.slice(currentGolferIndex, currentGolferIndex + 4);
+                    allGroups.push(group);
+                    currentGolferIndex += 4;
+                }
+
+                for (let i = 0; i < groupsOf2; i++) {
+                    const group = golfers.slice(currentGolferIndex, currentGolferIndex + 2);
+                    allGroups.push(group);
+                    currentGolferIndex += 2;
+                }
+
+                allGroups.forEach((group, i) => {
+                    // Sort the group alphabetically for easier reading
+                    group.sort((a, b) => a.localeCompare(b));
+
+                    const groupCard = document.createElement('div');
+                    groupCard.className = 'bg-indigo-50 p-6 rounded-lg golf-card group-card-fade-in';
+                    
+                    const groupTitle = document.createElement('h3');
+                    groupTitle.className = 'text-xl font-bold text-indigo-700 mb-4 border-b-2 border-indigo-200 pb-2';
+                    groupTitle.textContent = `Group ${i + 1} (${group.length} players)`;
+                    groupCard.appendChild(groupTitle);
+
+                    const golferList = document.createElement('ul');
+                    golferList.className = 'list-disc list-inside space-y-2 text-gray-700';
+
+                    group.forEach(golfer => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'pl-2 text-md';
+                        listItem.textContent = golfer;
+                        golferList.appendChild(listItem);
+                    });
+
+                    groupCard.appendChild(golferList);
+                    groupsContainer.appendChild(groupCard);
+                });
+            }
+            
+            function renderSingleGroup(golfers) {
+                 groupsContainer.innerHTML = '';
+                 // Sort the group alphabetically
+                 golfers.sort((a, b) => a.localeCompare(b));
+                 const groupCard = document.createElement('div');
+                 groupCard.className = 'bg-indigo-50 p-6 rounded-lg golf-card col-span-full group-card-fade-in';
+                 const groupTitle = document.createElement('h3');
+                 groupTitle.className = 'text-xl font-bold text-indigo-700 mb-4 border-b-2 border-indigo-200 pb-2';
+                 groupTitle.textContent = `Group 1 (${golfers.length} players)`;
+                 groupCard.appendChild(groupTitle);
+                 const golferList = document.createElement('ul');
+                 golferList.className = 'list-disc list-inside space-y-2 text-gray-700';
+                 golfers.forEach(golfer => {
+                     const listItem = document.createElement('li');
+                     listItem.className = 'pl-2 text-md';
+                     listItem.textContent = golfer;
+                     golferList.appendChild(listItem);
+                 });
+                 groupCard.appendChild(golferList);
+                 groupsContainer.appendChild(groupCard);
+            }
+
+            // Event listener for the "Add Golfer" button
+            addGolferButton.addEventListener('click', () => {
+                const newGolferName = newGolferInput.value.trim();
+                if (newGolferName && !golferNames.includes(newGolferName)) {
+                    golferNames.push(newGolferName);
+                    // Sort the list after adding a new golfer to keep the checkbox order consistent.
+                    golferNames.sort((a, b) => a.localeCompare(b));
+                    saveGolfersToLocalStorage();
+                    populateGolferChecklist();
+                    newGolferInput.value = '';
+                } else if (golferNames.includes(newGolferName)) {
+                    newGolferInput.placeholder = 'Golfer already exists!';
+                    setTimeout(() => {
+                        newGolferInput.placeholder = 'Enter new golfer name';
+                    }, 2000);
+                }
+            });
+
+            // Event listener for the "Delete Selected" button
+            deleteSelectedButton.addEventListener('click', () => {
+                const selectedGolfers = Array.from(golferChecklist.querySelectorAll('input:checked')).map(checkbox => checkbox.value);
+                
+                if (selectedGolfers.length > 0) {
+                    golferNames = golferNames.filter(golfer => !selectedGolfers.includes(golfer));
+                    
+                    saveGolfersToLocalStorage();
+                    populateGolferChecklist();
+                    
+                    renderGroups([]);
+                }
+            });
+            
+            // Event listener for the "Draw Groups" button
+            drawGroupsButton.addEventListener('click', () => {
+                const selectedGolfers = Array.from(golferChecklist.querySelectorAll('input:checked')).map(checkbox => checkbox.value);
+                
+                if (selectedGolfers.length === 0) {
+                    renderGroups([]);
+                    return;
+                }
+                
+                // Show loading message and clear groups
+                loadingMessage.classList.remove('hidden');
+                groupsContainer.innerHTML = '';
+                
+                setTimeout(() => {
+                    loadingMessage.classList.add('hidden');
+                    // Store the selected golfers for reshuffle
+                    lastSelectedGolfers = [...selectedGolfers];
+                    
+                    // Create a copy and shuffle
+                    const golfersToShuffle = [...lastSelectedGolfers];
+                    const shuffledGolfers = shuffle(golfersToShuffle);
+                    
+                    // Render the new groups
+                    renderGroups(shuffledGolfers);
+                    
+                    // Show the reshuffle button
+                    reshuffleButton.classList.remove('hidden');
+                }, 500); // A short delay to make the drawing process visible
+            });
+
+            // Event listener for the "Reshuffle Groups" button
+            reshuffleButton.addEventListener('click', () => {
+                if (lastSelectedGolfers.length === 0) {
+                    return;
+                }
+                
+                // Show loading message and clear groups
+                loadingMessage.classList.remove('hidden');
+                groupsContainer.innerHTML = '';
+                
+                setTimeout(() => {
+                    loadingMessage.classList.add('hidden');
+                    // Create a copy of the last selected golfers and shuffle
+                    const golfersToShuffle = [...lastSelectedGolfers];
+                    const shuffledGolfers = shuffle(golfersToShuffle);
+                    
+                    // Render the new groups
+                    renderGroups(shuffledGolfers);
+                }, 500); // A short delay to make the drawing process visible
+            });
+            
+            // Event listener for the "Edit Title" button
+            editTitleButton.addEventListener('click', () => {
+                const newTitle = prompt("Enter a new title:", mainTitle.textContent);
+                if (newTitle !== null && newTitle.trim() !== "") {
+                    saveTitleToLocalStorage(newTitle);
+                }
+            });
+
+            // Initial setup on page load
+            populateGolferChecklist();
+            renderGroups([]);
+        };
+    </script>
+
+</body>
+</html>
