@@ -44,6 +44,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Golfer Group Generator</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         body {
@@ -162,49 +163,29 @@
         window.onload = function() {
             // Master list of all golfers
             const initialGolferList = [
-                'Colin Parker',
                 'Craig Palmer',
                 'Daljit Basra',
                 'Dan Breeze',
                 'Daren Davey',
-                'Darren Roberts',
                 'David Park',
-                'David Quinlan',
-                'Duane Hayden',
-                'Gamma Basra',
                 'James Andrews',
-                'Josh Kinnear',
                 'Harjinder Theara',
                 'Ian Hamilton',
-                'James Ellis',
-                'James Major',
-                'Jamie Dixon',
                 'Jeet Sohal',
                 'Joe Ciampa',
                 'Jonathan Conlon',
-                'Josh Eaton',
-                'Joshua Roseberry',
-                'Julian Pennie',
                 'Kamal Dhunna',
                 'Mark Hickman',
-                'Mark Saunders',
-                'Michael Paeckmeyer',
-                'Nick Eaton',
-                'Oliver Goodwin',
                 'Paul Bentley',
                 'Peter Ramsden',
-                'Rich Moore',
-                'Ryan Conlon',
                 'Stephen De Fraine',
-                'Steve Cornwell',
-                'Steven Smith',
-                'Tom McCarthy',
-                'Tony Chapman',
-                'Tony Semple',
                 'Jas Basra',
                 'Carl Best',
-                'Sean Casey',
-                'Nav Nagra'
+                'Zach Gower',
+		'Jamie Gower',
+		'Ryan Gower',
+		'Barry French',
+                'Nav Nagra',
             ];
             
             // Define a key for localStorage to store the golfer list and title
@@ -774,21 +755,126 @@
                 }
             });
 
-            // Event listener for "Share to WhatsApp" button
-            shareWhatsAppButton.addEventListener('click', () => {
+            // Event listener for "Share to WhatsApp" button — captures groups as an image
+            shareWhatsAppButton.addEventListener('click', async () => {
                 if (lastDrawnGroups.length === 0) return;
-                const title = mainTitle.textContent;
-                let message = `🏌️ *${title}* 🏌️\n\n`;
+
+                // Build a self-contained off-screen snapshot element
+                const snapshot = document.createElement('div');
+                snapshot.style.cssText = [
+                    'position:fixed', 'left:-9999px', 'top:0',
+                    'background:#f3f4f6', 'padding:24px', 'border-radius:16px',
+                    'font-family:Inter,sans-serif', 'width:600px'
+                ].join(';');
+
+                // Title banner
+                const banner = document.createElement('div');
+                banner.style.cssText = 'text-align:center;margin-bottom:20px;';
+                banner.innerHTML = `
+                    <div style="font-size:28px;font-weight:800;color:#1e293b;letter-spacing:-0.5px;">
+                        ⛳ ${mainTitle.textContent} ⛳
+                    </div>`;
+                snapshot.appendChild(banner);
+
+                // Groups grid
+                const grid = document.createElement('div');
+                grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;';
+
                 lastDrawnGroups.forEach((group, i) => {
-                    message += `⛳ *Group ${i + 1}* (${group.length} players)\n`;
-                    group.forEach(golfer => {
-                        const phc = phcData[golfer] !== undefined ? ` (PHC ${phcData[golfer]})` : '';
-                        message += `  • ${golfer}${phc}\n`;
+                    const card = document.createElement('div');
+                    card.style.cssText = [
+                        'background:#fff', 'border-radius:12px',
+                        'padding:16px', 'box-shadow:0 2px 8px rgba(0,0,0,0.10)'
+                    ].join(';');
+
+                    const heading = document.createElement('div');
+                    heading.style.cssText = [
+                        'font-size:16px', 'font-weight:700', 'color:#4338ca',
+                        'border-bottom:2px solid #c7d2fe', 'padding-bottom:8px', 'margin-bottom:10px'
+                    ].join(';');
+                    heading.textContent = `Group ${i + 1}  (${group.length} players)`;
+                    card.appendChild(heading);
+
+                    const sorted = [...group].sort((a, b) => a.localeCompare(b));
+                    sorted.forEach(golfer => {
+                        const row = document.createElement('div');
+                        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
+
+                        const dot = document.createElement('span');
+                        dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;';
+                        row.appendChild(dot);
+
+                        const name = document.createElement('span');
+                        name.style.cssText = 'font-size:14px;font-weight:500;color:#374151;';
+                        name.textContent = golfer;
+                        row.appendChild(name);
+
+                        if (phcData[golfer] !== undefined) {
+                            const badge = document.createElement('span');
+                            badge.style.cssText = [
+                                'margin-left:auto', 'font-size:11px', 'font-weight:600',
+                                'background:#e0e7ff', 'color:#3730a3',
+                                'padding:2px 7px', 'border-radius:999px'
+                            ].join(';');
+                            badge.textContent = `PHC ${phcData[golfer]}`;
+                            row.appendChild(badge);
+                        }
+                        card.appendChild(row);
                     });
-                    message += '\n';
+                    grid.appendChild(card);
                 });
-                const encoded = encodeURIComponent(message.trim());
-                window.open(`https://wa.me/?text=${encoded}`, '_blank');
+
+                // If odd number of groups, span last card full width
+                if (lastDrawnGroups.length % 2 !== 0 && lastDrawnGroups.length > 1) {
+                    grid.lastChild.style.gridColumn = '1 / -1';
+                }
+
+                snapshot.appendChild(grid);
+                document.body.appendChild(snapshot);
+
+                // Temporarily show the original button label as "Generating…"
+                const origLabel = shareWhatsAppButton.querySelector('span');
+                const origText = origLabel.textContent;
+                origLabel.textContent = 'Generating image…';
+                shareWhatsAppButton.disabled = true;
+
+                try {
+                    const canvas = await html2canvas(snapshot, {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#f3f4f6'
+                    });
+
+                    canvas.toBlob(blob => {
+                        if (!blob) {
+                            alert('Could not generate image. Try the text share option instead.');
+                            return;
+                        }
+                        const file = new File([blob], 'golf-groups.png', { type: 'image/png' });
+
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            // Native share (mobile — will open WhatsApp, Messages, etc.)
+                            navigator.share({
+                                files: [file],
+                                title: mainTitle.textContent,
+                                text: '🏌️ Golf Groups Draw'
+                            }).catch(() => {});
+                        } else {
+                            // Fallback: download the image so the user can share manually
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'golf-groups.png';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            alert('Image downloaded! Open WhatsApp and attach the image to share it.');
+                        }
+                    }, 'image/png');
+                } finally {
+                    document.body.removeChild(snapshot);
+                    origLabel.textContent = origText;
+                    shareWhatsAppButton.disabled = false;
+                }
             });
 
             // Initial setup on page load
