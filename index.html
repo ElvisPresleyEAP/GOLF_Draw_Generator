@@ -680,7 +680,18 @@
 
             // Event listener for "Deselect All" button
             deselectAllButton.addEventListener('click', () => {
-                golferChecklist.querySelectorAll('input[type=checkbox]:checked').forEach(cb => cb.checked = false);
+                golferChecklist.querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
+                    cb.checked = false;
+                    const row = cb.closest('div');
+                    if (row) {
+                        const phcInput = row.querySelector('input[type=number]');
+                        if (phcInput) {
+                            phcInput.value = '';
+                            delete phcData[cb.value];
+                        }
+                    }
+                });
+                savePhcToLocalStorage();
                 updateTally();
             });
 
@@ -799,13 +810,6 @@
                     sorted.forEach(golfer => {
                         const row = document.createElement('div');
                         row.style.cssText = 'display:table;width:100%;padding:4px 0;';
-
-                        const dotCell = document.createElement('span');
-                        dotCell.style.cssText = 'display:table-cell;width:16px;vertical-align:middle;';
-                        const dot = document.createElement('span');
-                        dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;vertical-align:middle;';
-                        dotCell.appendChild(dot);
-                        row.appendChild(dotCell);
 
                         const nameCell = document.createElement('span');
                         nameCell.style.cssText = 'display:table-cell;font-size:14px;font-weight:500;color:#374151;vertical-align:middle;';
