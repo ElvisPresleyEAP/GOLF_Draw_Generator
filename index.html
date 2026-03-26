@@ -457,8 +457,8 @@
 
             function moveToGroup(srcEl, targetCard) {
                 const targetCount = targetCard.querySelectorAll('.player-item').length;
-                if (targetCount >= 5) {
-                    showToast('Maximum 5 players per group');
+                if (targetCount >= 4) {
+                    showToast('Maximum 4 players per group');
                     return;
                 }
                 targetCard.querySelector('ul').appendChild(srcEl);
