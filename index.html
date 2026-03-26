@@ -182,9 +182,9 @@
                 'Jas Basra',
                 'Carl Best',
                 'Zach Gower',
-		        'Jamie Gower',
-		        'Ryan Gower',
-		        'Barry French',
+		'Jamie Gower',
+		'Ryan Gower',
+		'Barry French',
                 'Nav Nagra',
             ];
             
@@ -798,24 +798,20 @@
                     const sorted = [...group].sort((a, b) => a.localeCompare(b));
                     sorted.forEach(golfer => {
                         const row = document.createElement('div');
-                        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;';
+                        row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:4px 0;';
 
                         const dot = document.createElement('span');
-                        dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;';
+                        dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:3px;align-self:flex-start;';
                         row.appendChild(dot);
 
                         const name = document.createElement('span');
-                        name.style.cssText = 'font-size:14px;font-weight:500;color:#374151;';
+                        name.style.cssText = 'font-size:14px;font-weight:500;color:#374151;line-height:1.4;';
                         name.textContent = golfer;
                         row.appendChild(name);
 
                         if (phcData[golfer] !== undefined) {
                             const badge = document.createElement('span');
-                            badge.style.cssText = [
-                                'margin-left:auto', 'font-size:11px', 'font-weight:600',
-                                'background:#e0e7ff', 'color:#3730a3',
-                                'padding:2px 7px', 'border-radius:999px'
-                            ].join(';');
+                            badge.style.cssText = 'margin-left:auto;font-size:12px;font-weight:500;color:#6b7280;';
                             badge.textContent = `PHC ${phcData[golfer]}`;
                             row.appendChild(badge);
                         }
