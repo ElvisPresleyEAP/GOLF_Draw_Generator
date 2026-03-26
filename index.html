@@ -531,7 +531,17 @@
             // Touch drag implementation
             let touchSrc = null;
 
+            function clearAllDragState() {
+                // Remove dragging class from ALL player items as a safety net
+                document.querySelectorAll('.player-item.dragging').forEach(el => el.classList.remove('dragging'));
+                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                removeGhost();
+                touchSrc = null;
+            }
+
             function onTouchStart(e) {
+                // Clear any leftover drag state from a previous interrupted drag
+                clearAllDragState();
                 touchSrc = this;
                 touchSrc.classList.add('dragging');
                 createGhost(touchSrc.querySelector('.player-name').textContent, e.touches[0]);
@@ -539,6 +549,7 @@
 
             function onTouchMove(e) {
                 e.preventDefault();
+                if (!touchSrc) return;
                 const touch = e.touches[0];
                 moveGhost(touch);
 
@@ -550,23 +561,28 @@
             }
 
             function onTouchEnd(e) {
-                removeGhost();
-                document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-                if (!touchSrc) return;
-                touchSrc.classList.remove('dragging');
+                if (!touchSrc) {
+                    clearAllDragState();
+                    return;
+                }
 
+                const savedSrc = touchSrc; // save ref before clearAllDragState nulls it
                 const touch = e.changedTouches[0];
                 const el = document.elementFromPoint(touch.clientX, touch.clientY);
                 const targetItem = el ? el.closest('.player-item') : null;
                 const targetCard = el ? el.closest('.group-card') : null;
 
-                if (targetItem && targetItem !== touchSrc) {
-                    swapPlayers(touchSrc, targetItem);
+                clearAllDragState();
+
+                if (targetItem && targetItem !== savedSrc) {
+                    swapPlayers(savedSrc, targetItem);
                 } else if (targetCard && !targetItem) {
-                    moveToGroup(touchSrc, targetCard);
+                    moveToGroup(savedSrc, targetCard);
                 }
-                touchSrc = null;
             }
+
+            // Global safety net: if touch is cancelled (e.g. phone call, notification), clean up
+            document.addEventListener('touchcancel', clearAllDragState);
 
             function createGhost(text, touch) {
                 ghost = document.createElement('div');
