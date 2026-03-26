@@ -798,22 +798,25 @@
                     const sorted = [...group].sort((a, b) => a.localeCompare(b));
                     sorted.forEach(golfer => {
                         const row = document.createElement('div');
-                        row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:4px 0;';
+                        row.style.cssText = 'display:table;width:100%;padding:4px 0;';
 
+                        const dotCell = document.createElement('span');
+                        dotCell.style.cssText = 'display:table-cell;width:16px;vertical-align:middle;';
                         const dot = document.createElement('span');
-                        dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:3px;align-self:flex-start;';
-                        row.appendChild(dot);
+                        dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;vertical-align:middle;';
+                        dotCell.appendChild(dot);
+                        row.appendChild(dotCell);
 
-                        const name = document.createElement('span');
-                        name.style.cssText = 'font-size:14px;font-weight:500;color:#374151;line-height:1.4;';
-                        name.textContent = golfer;
-                        row.appendChild(name);
+                        const nameCell = document.createElement('span');
+                        nameCell.style.cssText = 'display:table-cell;font-size:14px;font-weight:500;color:#374151;vertical-align:middle;';
+                        nameCell.textContent = golfer;
+                        row.appendChild(nameCell);
 
                         if (phcData[golfer] !== undefined) {
-                            const badge = document.createElement('span');
-                            badge.style.cssText = 'margin-left:auto;font-size:12px;font-weight:500;color:#6b7280;';
-                            badge.textContent = `PHC ${phcData[golfer]}`;
-                            row.appendChild(badge);
+                            const phcCell = document.createElement('span');
+                            phcCell.style.cssText = 'display:table-cell;font-size:12px;font-weight:500;color:#6b7280;text-align:right;vertical-align:middle;white-space:nowrap;';
+                            phcCell.textContent = `PHC ${phcData[golfer]}`;
+                            row.appendChild(phcCell);
                         }
                         card.appendChild(row);
                     });
